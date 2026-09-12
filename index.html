@@ -9,6 +9,15 @@
 <style>
 .auth-area{display:flex;align-items:center;gap:9px}.user-chip{display:flex;align-items:center;gap:8px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:7px 10px;font-size:12px;font-weight:750}.user-chip small{display:block;color:var(--muted);font-weight:500}.auth-back{position:fixed;inset:0;background:rgba(5,18,11,.62);display:none;place-items:center;z-index:120;padding:18px}.auth-back.show{display:grid}.auth-card{width:min(460px,100%);background:#fff;border-radius:22px;padding:26px;box-shadow:0 30px 100px rgba(0,0,0,.25)}.auth-logo{width:48px;height:48px;border-radius:15px;background:linear-gradient(135deg,#2ed477,#0c6b3c);display:grid;place-items:center;font-size:24px;margin-bottom:14px}.auth-card h2{margin:0 0 5px}.auth-card .sub{color:var(--muted);font-size:13px;line-height:1.5;margin-bottom:18px}.auth-tabs{display:grid;grid-template-columns:1fr 1fr;background:#eef5f0;border-radius:11px;padding:4px;margin-bottom:16px}.auth-tabs button{border:0;background:transparent;padding:9px;border-radius:8px;font-weight:800;color:var(--muted)}.auth-tabs button.active{background:#fff;color:var(--ink);box-shadow:0 2px 8px rgba(18,50,31,.08)}.auth-fields{display:grid;gap:11px}.auth-fields label{font-size:12px;font-weight:800}.auth-fields input{width:100%;border:1px solid var(--line);border-radius:10px;padding:11px;box-sizing:border-box}.auth-note{font-size:11px;color:var(--muted);margin-top:12px;line-height:1.45}.auth-error{background:#fdecec;color:#a63d3d;border-radius:10px;padding:10px;font-size:12px;margin-bottom:11px;display:none}.auth-error.show{display:block}.role-note{background:#eef8f1;border-radius:10px;padding:10px;font-size:11px;color:#27633f;margin-top:10px}.locked{opacity:.55}.auth-required{display:none}.public-badge{background:#e8f7ee;color:#11723f;padding:5px 8px;border-radius:20px;font-size:10px;font-weight:900}.mobile-menu{display:none}
 @media(max-width:760px){.auth-area{width:100%;justify-content:flex-end}.topbar{flex-wrap:wrap}.mobile-menu{display:block}}
+
+.entry-gate{position:fixed;inset:0;background:linear-gradient(135deg,rgba(7,29,18,.96),rgba(15,36,26,.94));display:grid;place-items:center;z-index:300;padding:22px;backdrop-filter:blur(8px)}
+.entry-gate.hidden{display:none}
+.entry-card{width:min(520px,100%);background:#fff;border-radius:28px;padding:34px;box-shadow:0 30px 120px rgba(0,0,0,.35);text-align:center}
+.entry-logo{width:72px;height:72px;border-radius:22px;background:linear-gradient(135deg,#2ed477,#0c6b3c);display:grid;place-items:center;font-size:36px;margin:0 auto 18px}
+.entry-card h1{margin:0 0 8px;font-size:30px}.entry-card p{color:var(--muted);line-height:1.6;font-size:14px;margin:0 auto 22px;max-width:430px}
+.entry-actions{display:grid;gap:10px}.entry-actions .btn{width:100%;justify-content:center;padding:13px 16px}.visitor-link{border:0;background:transparent;color:var(--green);font-weight:800;cursor:pointer;padding:9px;font-size:13px}
+.entry-status{font-size:11px;color:var(--muted);margin-top:15px;line-height:1.5}
+
 </style>
 <style>
 :root{
@@ -197,8 +206,21 @@ table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:13px 9px
     </div>
     <div class="role-note">Student accounts are created by default. Teacher/admin access is controlled securely from the database.</div>
     <button class="btn primary" id="authSubmit" style="width:100%;margin-top:16px" onclick="submitAuth()">Log in</button>
-    <button class="btn ghost" style="width:100%;margin-top:8px" onclick="closeAuth()">Continue as visitor</button>
+    <button class="btn ghost" style="width:100%;margin-top:8px" onclick="continueAsVisitor();closeAuth()">Continue as visitor</button>
     <div class="auth-note">Public pages such as the leaderboard remain viewable without an account. Your password is handled by the authentication provider and is never stored by this page.</div>
+  </div>
+</div>
+<div class="entry-gate" id="entryGate">
+  <div class="entry-card">
+    <div class="entry-logo">🌱</div>
+    <h1>Welcome to Greenovation</h1>
+    <p>Log in to unlock your student dashboard, submit environmental actions, earn Green Points and track your impact. You can also continue as a visitor to explore the public pages.</p>
+    <div class="entry-actions">
+      <button class="btn primary" onclick="openAuthFromGate('login')">Log in</button>
+      <button class="btn ghost" onclick="openAuthFromGate('signup')">Create account</button>
+      <button class="visitor-link" onclick="continueAsVisitor()">Continue as visitor →</button>
+    </div>
+    <div class="entry-status">Your account and login session are securely saved by Supabase. You will normally stay signed in when you return.</div>
   </div>
 </div>
 <div class="toast" id="toast"></div>
@@ -226,8 +248,8 @@ function setAuthMode(mode){
  document.getElementById('authSubmit').textContent=mode==='signup'?'Create account':'Log in';
  document.getElementById('authError').classList.remove('show');
 }
-function openAuth(mode='login'){ if(!configured){ toast('Connect Supabase first to enable real accounts.'); return; } setAuthMode(mode); document.getElementById('authBack').classList.add('show'); }
-function closeAuth(){document.getElementById('authBack').classList.remove('show')}
+function openAuth(mode='login'){ if(!configured){ toast('Connect Supabase first to enable real accounts.'); return; } localStorage.removeItem('greenovation_visitor'); setAuthMode(mode); document.getElementById('authBack').classList.add('show'); }
+function closeAuth(){document.getElementById('authBack').classList.remove('show'); if(!currentUser && !localStorage.getItem('greenovation_visitor')) showEntryGate();}
 function authError(msg){const e=document.getElementById('authError');e.textContent=msg;e.classList.add('show')}
 async function submitAuth(){
  if(!sb){authError('This build is not connected to Supabase yet. Add your project URL and public key near the top of index.html.');return;}
@@ -258,22 +280,36 @@ async function loadCurrentProfile(){
  currentProfile=data;
 }
 function refreshAuthUI(){
-  const area=document.getElementById('authArea');
-
-  if(currentUser && currentProfile){
-    area.innerHTML=`<div class="user-chip">
-  <div class="avatar">${initials(currentProfile.full_name)}</div>
-  <div>${esc(currentProfile.full_name)}</div>
-</div>
-<button class="btn ghost" onclick="logout()">Log out</button>`;
-    document.getElementById('dataBadge').textContent=' LIVE DATA ';
-    document.querySelector('.demo').innerHTML='<strong>● LIVE MODE</strong> Connected to the shared Greenovation database.';
-  }else{
-    area.innerHTML=`<button class="btn primary" onclick="openAuth('login')">Log in</button>
-    <button class="btn ghost" onclick="openAuth('signup')">Create account</button>`;
-  }
+ const area=document.getElementById('authArea');
+ if(currentUser && currentProfile){
+   area.innerHTML=`<div class="user-chip"><div class="avatar" style="width:30px;height:30px">${initials(currentProfile.full_name)}</div><div>${esc(currentProfile.full_name)}<small>${currentProfile.role==='student'?'Student':'Staff'} · ${currentProfile.points.toLocaleString()} pts</small></div></div><button class="btn ghost" onclick="logout()">Log out</button>`;
+   document.getElementById('dataBadge').textContent='● LIVE DATA';
+   document.querySelector('.demo').innerHTML='<strong>● LIVE MODE</strong> Connected to the shared Greenovation database.';
+   hideEntryGate();
+ }else{
+   area.innerHTML=`<button class="btn primary" onclick="openAuth('login')">Log in</button><button class="btn ghost" onclick="openAuth('signup')">Create account</button>`;
+   document.getElementById('dataBadge').textContent='● PUBLIC MODE';
+   document.querySelector('.demo').innerHTML='<strong>● VISITOR MODE</strong> Log in to unlock student features and saved activity.';
+ }
 }
-async function logout(){if(sb) await sb.auth.signOut();currentUser=null;currentProfile=null;refreshAuthUI();toast('Logged out. Public pages are still available.');showView('home')}
+function hideEntryGate(){
+ const gate=document.getElementById('entryGate');
+ if(gate)gate.classList.add('hidden');
+}
+function showEntryGate(){
+ const gate=document.getElementById('entryGate');
+ if(gate)gate.classList.remove('hidden');
+}
+function continueAsVisitor(){
+ localStorage.setItem('greenovation_visitor','1');
+ hideEntryGate();
+ toast('Visitor mode enabled. Log in anytime to unlock all features.');
+}
+function openAuthFromGate(mode){
+ localStorage.removeItem('greenovation_visitor');
+ openAuth(mode);
+}
+async function logout(){if(sb) await sb.auth.signOut();currentUser=null;currentProfile=null;localStorage.removeItem('greenovation_visitor');refreshAuthUI();showView('home');showEntryGate();toast('Logged out. You can continue as a visitor or log in again.')}
 function initials(n){return (n||'?').split(/\s+/).map(x=>x[0]).slice(0,2).join('').toUpperCase()}
 function esc(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
 function requireLogin(view){
@@ -359,8 +395,21 @@ window.submitAction=async function(){
  await loadMySubmissions();
 };
 
-if(configured)bootRealData();
-else refreshAuthUI();
+if(configured){
+ bootRealData().then(()=>{
+   if(currentUser) hideEntryGate();
+   else if(localStorage.getItem('greenovation_visitor')==='1') hideEntryGate();
+   else showEntryGate();
+ }).catch(()=>{
+   if(localStorage.getItem('greenovation_visitor')==='1') hideEntryGate();
+   else showEntryGate();
+ });
+}else{
+ refreshAuthUI();
+ if(localStorage.getItem('greenovation_visitor')==='1') hideEntryGate();
+ else showEntryGate();
+}
+
 </script>
 <script>
 const cats=[

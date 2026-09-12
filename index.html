@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Greenovation — School Environment Score</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+.auth-area{display:flex;align-items:center;gap:9px}.user-chip{display:flex;align-items:center;gap:8px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:7px 10px;font-size:12px;font-weight:750}.user-chip small{display:block;color:var(--muted);font-weight:500}.auth-back{position:fixed;inset:0;background:rgba(5,18,11,.62);display:none;place-items:center;z-index:120;padding:18px}.auth-back.show{display:grid}.auth-card{width:min(460px,100%);background:#fff;border-radius:22px;padding:26px;box-shadow:0 30px 100px rgba(0,0,0,.25)}.auth-logo{width:48px;height:48px;border-radius:15px;background:linear-gradient(135deg,#2ed477,#0c6b3c);display:grid;place-items:center;font-size:24px;margin-bottom:14px}.auth-card h2{margin:0 0 5px}.auth-card .sub{color:var(--muted);font-size:13px;line-height:1.5;margin-bottom:18px}.auth-tabs{display:grid;grid-template-columns:1fr 1fr;background:#eef5f0;border-radius:11px;padding:4px;margin-bottom:16px}.auth-tabs button{border:0;background:transparent;padding:9px;border-radius:8px;font-weight:800;color:var(--muted)}.auth-tabs button.active{background:#fff;color:var(--ink);box-shadow:0 2px 8px rgba(18,50,31,.08)}.auth-fields{display:grid;gap:11px}.auth-fields label{font-size:12px;font-weight:800}.auth-fields input{width:100%;border:1px solid var(--line);border-radius:10px;padding:11px;box-sizing:border-box}.auth-note{font-size:11px;color:var(--muted);margin-top:12px;line-height:1.45}.auth-error{background:#fdecec;color:#a63d3d;border-radius:10px;padding:10px;font-size:12px;margin-bottom:11px;display:none}.auth-error.show{display:block}.role-note{background:#eef8f1;border-radius:10px;padding:10px;font-size:11px;color:#27633f;margin-top:10px}.locked{opacity:.55}.auth-required{display:none}.public-badge{background:#e8f7ee;color:#11723f;padding:5px 8px;border-radius:20px;font-size:10px;font-weight:900}.mobile-menu{display:none}
+@media(max-width:760px){.auth-area{width:100%;justify-content:flex-end}.topbar{flex-wrap:wrap}.mobile-menu{display:block}}
+</style>
+<style>
+:root{
+  --bg:#f5f8f5; --card:#fff; --ink:#173024; --muted:#6b7d73; --line:#e3ebe5;
+  --green:#16834a; --green2:#20a65d; --mint:#e8f7ee; --dark:#0f241a;
+  --amber:#f2a93b; --red:#d95c5c; --shadow:0 14px 40px rgba(18,50,31,.08);
+}
+*{box-sizing:border-box} html{scroll-behavior:smooth}
+body{margin:0;font-family:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:var(--ink)}
+button,input,select,textarea{font:inherit} button{cursor:pointer}
+.app{display:flex;min-height:100vh}
+.sidebar{width:250px;background:var(--dark);color:#dbe9df;position:fixed;inset:0 auto 0 0;padding:24px 16px;display:flex;flex-direction:column;z-index:20}
+.brand{display:flex;align-items:center;gap:11px;padding:5px 10px 26px}
+.logo{width:40px;height:40px;border-radius:13px;background:linear-gradient(135deg,#2ed477,#0c6b3c);display:grid;place-items:center;font-size:21px}
+.brand b{font-size:18px;color:white}.brand span{display:block;font-size:11px;color:#92aa9a;margin-top:2px}
+.nav{display:grid;gap:6px}.nav button{border:0;background:transparent;color:#b9c9bf;text-align:left;padding:12px 13px;border-radius:11px;display:flex;align-items:center;gap:11px;font-weight:600}
+.nav button:hover,.nav button.active{background:#1b3a29;color:white}.nav .ico{width:20px;text-align:center}
+.sidebar-bottom{margin-top:auto}.demo{background:#183c2a;border:1px solid #28543c;border-radius:13px;padding:12px;font-size:12px;color:#b7d5c1}.demo strong{color:#8ff0b8;display:block;margin-bottom:4px}
+.main{margin-left:250px;width:calc(100% - 250px);padding:26px 34px 50px}
+.topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:24px}.crumb{color:var(--muted);font-size:13px}.top-actions{display:flex;gap:10px}
+.btn{border:0;border-radius:10px;padding:10px 15px;font-weight:700}.btn.primary{background:var(--green);color:#fff}.btn.ghost{background:#fff;color:var(--ink);border:1px solid var(--line)}
+.view{display:none}.view.active{display:block}
+.hero{background:linear-gradient(125deg,#0f2b1c,#14643b);color:#fff;border-radius:24px;padding:34px;display:flex;justify-content:space-between;gap:30px;overflow:hidden;position:relative;box-shadow:var(--shadow)}
+.hero:after{content:"";position:absolute;width:340px;height:340px;border-radius:50%;right:-90px;top:-150px;background:rgba(89,224,143,.13)}
+.eyebrow{font-size:12px;text-transform:uppercase;letter-spacing:.13em;color:#8ee8b3;font-weight:800}.hero h1{font-size:42px;line-height:1.04;margin:9px 0 12px;max-width:620px}.hero p{color:#c8dbcf;max-width:600px;line-height:1.6}
+.hero-actions{display:flex;gap:10px;margin-top:22px}.hero .btn.primary{background:#4fe18b;color:#0d291b}.hero .btn.ghost{background:rgba(255,255,255,.09);border-color:rgba(255,255,255,.16);color:#fff}
+.score-orb{width:190px;height:190px;border-radius:50%;background:conic-gradient(#54e18e 0 72%,rgba(255,255,255,.12) 72%);display:grid;place-items:center;flex:none;position:relative;margin:8px 20px 0 0}
+.score-orb:before{content:"";position:absolute;inset:12px;border-radius:50%;background:#123321}.score-inner{position:relative;text-align:center}.score-inner strong{font-size:45px;display:block}.score-inner span{font-size:12px;color:#a9c8b4}
+.grid{display:grid;gap:16px}.stats{grid-template-columns:repeat(4,1fr);margin:18px 0}.card{background:var(--card);border:1px solid var(--line);border-radius:17px;padding:19px;box-shadow:0 6px 20px rgba(18,50,31,.035)}
+.stat-label{font-size:12px;color:var(--muted);font-weight:700}.stat-num{font-size:28px;font-weight:850;margin-top:7px}.delta{font-size:12px;color:var(--green);font-weight:700;margin-top:5px}
+.two{grid-template-columns:1.25fr .75fr}.three{grid-template-columns:repeat(3,1fr)}
+.section-title{display:flex;justify-content:space-between;align-items:center;margin:26px 0 12px}.section-title h2{font-size:18px;margin:0}.section-title span{font-size:12px;color:var(--muted)}
+.score-cards{grid-template-columns:repeat(5,1fr)}.category{position:relative;overflow:hidden}.cat-top{display:flex;justify-content:space-between;align-items:center}.cat-icon{width:38px;height:38px;border-radius:11px;background:var(--mint);display:grid;place-items:center}.cat-score{font-size:27px;font-weight:850;margin:13px 0 8px}.bar{height:7px;background:#edf2ee;border-radius:20px;overflow:hidden}.bar i{display:block;height:100%;background:linear-gradient(90deg,#16834a,#42d27e);border-radius:20px}.cat-foot{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-top:7px}
+.activity{display:grid;gap:12px}.activity-row{display:flex;gap:11px;align-items:flex-start}.avatar{width:36px;height:36px;border-radius:50%;background:#e7f6ec;display:grid;place-items:center;font-weight:800;color:var(--green);flex:none}.activity-row p{margin:0;font-size:13px;line-height:1.4}.activity-row small{color:var(--muted)}
+.rank-list{display:grid;gap:8px}.rank{display:grid;grid-template-columns:34px 1fr auto;gap:10px;align-items:center;padding:9px;border-radius:11px}.rank:nth-child(1){background:#fff8e8}.rank:nth-child(2){background:#f4f7f6}.rank:nth-child(3){background:#fff4ed}.ranknum{font-weight:900}.person{font-weight:750;font-size:13px}.person small{display:block;color:var(--muted);font-weight:500}.pts{font-weight:850}
+table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:13px 9px;border-bottom:1px solid var(--line);font-size:13px}th{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}.pill{padding:5px 8px;border-radius:20px;font-size:11px;font-weight:800}.pill.green{background:#e8f7ee;color:#11723f}.pill.amber{background:#fff4dc;color:#95620d}.pill.red{background:#fdecec;color:#a63d3d}
+.page-head{margin-bottom:20px}.page-head h1{font-size:30px;margin:0 0 5px}.page-head p{color:var(--muted);margin:0}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.field{display:grid;gap:7px}.field.full{grid-column:1/-1}.field label{font-size:12px;font-weight:800}.field input,.field select,.field textarea{border:1px solid var(--line);border-radius:10px;padding:11px;background:#fbfdfb;outline:none}.field textarea{min-height:100px;resize:vertical}.field input:focus,.field select:focus,.field textarea:focus{border-color:#67be8d;box-shadow:0 0 0 3px #e7f7ed}
+.action-grid{grid-template-columns:repeat(3,1fr)}.action-card h3{margin:9px 0 5px;font-size:15px}.action-card p{font-size:12px;color:var(--muted);line-height:1.45}.points{color:var(--green);font-weight:900}.action-card .btn{margin-top:9px;width:100%}
+.profile{display:flex;align-items:center;gap:16px}.big-avatar{width:70px;height:70px;border-radius:22px;background:linear-gradient(135deg,#ccefd8,#74ce98);display:grid;place-items:center;font-size:25px;font-weight:900;color:#0d5c34}.profile h2{margin:0 0 4px}.profile p{margin:0;color:var(--muted);font-size:13px}
+.badges{display:flex;gap:10px;flex-wrap:wrap}.badge{border:1px solid var(--line);border-radius:14px;padding:12px;min-width:125px;background:#fbfdfb}.badge .bicon{font-size:25px}.badge b{display:block;font-size:12px;margin-top:6px}.badge small{color:var(--muted)}
+.priority{display:flex;align-items:center;gap:12px}.priority-num{font-size:26px;font-weight:900;color:var(--green)}
+.empty{padding:30px;text-align:center;color:var(--muted);font-size:13px}
+.toast{position:fixed;right:25px;bottom:25px;background:#123321;color:white;padding:13px 16px;border-radius:11px;box-shadow:var(--shadow);transform:translateY(100px);opacity:0;transition:.25s;z-index:99;font-size:13px}.toast.show{transform:translateY(0);opacity:1}
+.modal-back{position:fixed;inset:0;background:rgba(5,18,11,.55);display:none;place-items:center;z-index:80;padding:20px}.modal-back.show{display:grid}.modal{background:white;border-radius:20px;padding:24px;max-width:520px;width:100%;box-shadow:0 30px 80px rgba(0,0,0,.2)}.modal h2{margin:0 0 5px}.modal p{color:var(--muted);font-size:13px;line-height:1.5}.modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}
+.demo-badge{display:inline-flex;align-items:center;gap:6px;padding:5px 8px;border-radius:20px;background:#fff4dc;color:#87590a;font-size:10px;font-weight:900}
+@media(max-width:1050px){.sidebar{width:215px}.main{margin-left:215px;width:calc(100% - 215px);padding:22px}.stats{grid-template-columns:repeat(2,1fr)}.score-cards{grid-template-columns:repeat(3,1fr)}.action-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:760px){.sidebar{position:static;width:100%;height:auto;padding:12px}.app{display:block}.brand{padding-bottom:10px}.nav{display:flex;overflow:auto}.nav button{white-space:nowrap}.sidebar-bottom{display:none}.main{margin:0;width:100%;padding:15px}.hero{padding:23px;display:block}.hero h1{font-size:31px}.score-orb{width:150px;height:150px;margin:22px auto 0}.stats,.two,.three,.score-cards,.action-grid,.form-grid{grid-template-columns:1fr}.topbar{align-items:flex-start}.hero-actions{flex-wrap:wrap}.field.full{grid-column:auto}}
+</style>
+</head>
+<body>
+<div class="app">
+<aside class="sidebar">
+  <div class="brand"><div class="logo">🌱</div><div><b>Greenovation</b><span>School Environment Score</span></div></div>
+  <nav class="nav">
+    <button class="active" data-view="home"><span class="ico">⌂</span>Overview</button>
+    <button data-view="student"><span class="ico">◉</span>My Dashboard</button>
+    <button data-view="submit"><span class="ico">＋</span>Submit Action</button>
+    <button data-view="leaderboard"><span class="ico">🏆</span>Leaderboard</button>
+    <button data-view="score"><span class="ico">◒</span>Environment Score</button>
+    <button data-view="progress"><span class="ico">↗</span>Progress</button>
+    <button data-view="challenges"><span class="ico">⚡</span>Challenges</button>
+    <button data-view="recognition"><span class="ico">✦</span>Recognition Wall</button>
+    <button data-view="admin"><span class="ico">⚙</span>Teacher / Admin</button>
+  </nav>
+  <div class="sidebar-bottom"><div class="demo"><strong>● LIVE-READY MODE</strong>Connect Supabase to enable real accounts, shared data and teacher verification.</div></div>
+</aside>
+
+<main class="main">
+<div class="topbar"><div class="crumb" id="crumb">Greenovation / Overview</div><div class="top-actions"><span class="public-badge">● PUBLIC VIEW</span><span class="demo-badge" id="dataBadge">● DEMO DATA</span><button class="btn ghost" onclick="presentationMode()">Presentation mode</button><div class="auth-area" id="authArea"><button class="btn primary" onclick="openAuth('login')">Log in</button><button class="btn ghost" onclick="openAuth('signup')">Create account</button></div></div></div>
+
+<section class="view active" id="home">
+  <div class="hero">
+    <div>
+      <div class="eyebrow">Measure before you change</div>
+      <h1>Make your school greener. Measure the change.</h1>
+      <p>Greenovation connects environmental performance with student action — so your school can measure problems, reward solutions, recognize contributors, and prove improvement.</p>
+      <div class="hero-actions"><button class="btn primary" onclick="showView('submit')">Take an action →</button><button class="btn ghost" onclick="showView('score')">View school score</button></div>
+    </div>
+    <div class="score-orb"><div class="score-inner"><strong>72</strong><span>School Score / 100</span></div></div>
+  </div>
+  <div class="grid stats">
+    <div class="card"><div class="stat-label">STUDENT GREEN POINTS</div><div class="stat-num" id="totalPoints">12,480</div><div class="delta">↑ 18.4% this month</div></div>
+    <div class="card"><div class="stat-label">VERIFIED ACTIONS</div><div class="stat-num" id="verifiedActions">684</div><div class="delta">↑ 92 this week</div></div>
+    <div class="card"><div class="stat-label">ACTIVE STUDENTS</div><div class="stat-num">186</div><div class="delta">64% participation</div></div>
+    <div class="card"><div class="stat-label">SCHOOL IMPROVEMENT</div><div class="stat-num">+14</div><div class="delta">vs. baseline 58</div></div>
+  </div>
+  <div class="section-title"><h2>Five areas. One clear picture.</h2><span>Current demo score</span></div>
+  <div class="grid score-cards" id="homeCats"></div>
+  <div class="grid two">
+    <div class="card"><div class="section-title" style="margin-top:0"><h2>School improvement</h2><span>Baseline → Current</span></div><canvas id="homeChart" height="110"></canvas></div>
+    <div class="card"><div class="section-title" style="margin-top:0"><h2>Live activity</h2><span>Recent verified actions</span></div><div class="activity" id="activity"></div></div>
+  </div>
+</section>
+
+<section class="view" id="student">
+  <div class="page-head"><h1>My Dashboard</h1><p>Your contribution to a greener school, all in one place.</p></div>
+  <div class="grid two">
+    <div class="card">
+      <div class="profile"><div class="big-avatar">T</div><div><h2>Taseen</h2><p>Grade 8 · Green Team</p><div style="margin-top:8px"><span class="pill green">Environmental Champion</span></div></div></div>
+      <div class="grid stats" style="grid-template-columns:repeat(3,1fr);margin-bottom:0"><div><div class="stat-label">POINTS</div><div class="stat-num" id="myPoints">1,240</div></div><div><div class="stat-label">RANK</div><div class="stat-num">#4</div></div><div><div class="stat-label">ACTIONS</div><div class="stat-num" id="myActions">37</div></div></div>
+    </div>
+    <div class="card"><div class="section-title" style="margin-top:0"><h2>My category impact</h2></div><canvas id="studentChart" height="155"></canvas></div>
+  </div>
+  <div class="section-title"><h2>My achievements</h2><span>4 earned · 2 locked</span></div>
+  <div class="card"><div class="badges"><div class="badge"><div class="bicon">🌱</div><b>Green Starter</b><small>First action completed</small></div><div class="badge"><div class="bicon">💧</div><b>Water Guardian</b><small>10 water actions</small></div><div class="badge"><div class="bicon">⚡</div><b>Energy Saver</b><small>10 energy actions</small></div><div class="badge"><div class="bicon">♻️</div><b>Waste Warrior</b><small>10 waste actions</small></div><div class="badge" style="opacity:.45"><div class="bicon">🌿</div><b>Green Guardian</b><small>3 more actions needed</small></div><div class="badge" style="opacity:.45"><div class="bicon">🏆</div><b>Ultimate Champion</b><small>2,000 points</small></div></div></div>
+</section>
+
+<section class="view" id="submit">
+  <div class="page-head"><h1>Submit an Environmental Action</h1><p>Do something useful. Log it. Let a teacher verify it. Earn Green Points.</p></div>
+  <div class="card">
+    <div class="form-grid">
+      <div class="field"><label>Category</label><select id="actionCat" onchange="loadActions()"><option>Water</option><option>Energy</option><option>Waste</option><option>Paper</option><option>Greenery</option></select></div>
+      <div class="field"><label>Action</label><select id="actionType"></select></div>
+      <div class="field"><label>Date</label><input type="date" id="actionDate"></div>
+      <div class="field"><label>Location / classroom</label><input id="actionLocation" placeholder="e.g. Science Lab"></div>
+      <div class="field full"><label>What did you do?</label><textarea id="actionDesc" placeholder="Briefly explain what happened and why it helped..."></textarea></div>
+      <div class="field full"><label>Evidence (optional)</label><input type="file" id="evidence"></div>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:17px;gap:10px;flex-wrap:wrap"><div style="font-size:12px;color:var(--muted)">Actions are <b>pending verification</b> until a teacher/admin approves them.</div><button class="btn primary" onclick="submitAction()">Submit for verification</button></div>
+  </div>
+  <div class="section-title"><h2>Popular actions</h2><span>Point values can be changed by admin</span></div>
+  <div class="grid action-grid" id="actionCards"></div>
+</section>
+
+<section class="view" id="leaderboard">
+  <div class="page-head"><h1>Green Leaderboard</h1><p>Recognition that makes contribution visible — not just competition.</p></div>
+  <div class="card">
+    <div class="top-actions" style="margin-bottom:13px"><button class="btn primary" onclick="renderLeaderboard('students')">Students</button><button class="btn ghost" onclick="renderLeaderboard('classes')">Classes</button><button class="btn ghost" onclick="renderLeaderboard('categories')">Categories</button></div>
+    <div style="display:flex;gap:8px;margin-bottom:13px"><select class="btn ghost" id="period" onchange="renderLeaderboard('students')"><option>This week</option><option>This month</option><option>This term</option><option>All time</option></select></div>
+    <div id="leaderboardBody"></div>
+  </div>
+</section>
+
+<section class="view" id="score">
+  <div class="page-head"><h1>School Environment Score</h1><p>One number built from five measurable areas — with the details behind it.</p></div>
+  <div class="hero" style="padding:26px;margin-bottom:18px"><div><div class="eyebrow">Current demo score</div><h1 style="font-size:36px">72 / 100</h1><p>Baseline was 58/100. The school has improved by <b style="color:#8ee8b3">+14 points</b>.</p></div><div class="score-orb" style="width:145px;height:145px"><div class="score-inner"><strong style="font-size:35px">+14</strong><span>improvement</span></div></div></div>
+  <div class="grid score-cards" id="scoreCats"></div>
+  <div class="grid two">
+    <div class="card"><h2 style="font-size:17px">How the score works</h2><p style="font-size:13px;color:var(--muted);line-height:1.6">Each category receives a score out of 100. The weighted combination creates the overall School Environment Score.</p><table><tr><th>Category</th><th>Weight</th><th>Score</th><th>Contribution</th></tr><tbody id="weightTable"></tbody></table></div>
+    <div class="card"><h2 style="font-size:17px">The measurement cycle</h2><div class="activity"><div class="priority"><div class="priority-num">01</div><div><b>MEASURE</b><small>Establish the baseline</small></div></div><div class="priority"><div class="priority-num">02</div><div><b>SCORE</b><small>Turn data into a clear picture</small></div></div><div class="priority"><div class="priority-num">03</div><div><b>TARGET</b><small>Choose the two priority areas</small></div></div><div class="priority"><div class="priority-num">04</div><div><b>ACT</b><small>Use simple targeted interventions</small></div></div><div class="priority"><div class="priority-num">05</div><div><b>RE-MEASURE → IMPROVE</b><small>Prove whether it worked</small></div></div></div></div>
+  </div>
+</section>
+
+<section class="view" id="progress">
+  <div class="page-head"><h1>Progress & Improvement</h1><p>Same measurement method. New results. Real evidence.</p></div>
+  <div class="grid two"><div class="card"><h2 style="font-size:17px">Baseline vs current</h2><canvas id="progressChart" height="220"></canvas></div><div class="card"><h2 style="font-size:17px">Priority areas</h2><div class="priority" style="padding:16px 0;border-bottom:1px solid var(--line)"><div class="priority-num">01</div><div style="flex:1"><b>Energy</b><small style="display:block;color:var(--muted)">61/100 · highest-weight category</small><div class="bar" style="margin-top:8px"><i style="width:61%"></i></div></div></div><div class="priority" style="padding:16px 0"><div class="priority-num">02</div><div style="flex:1"><b>Water</b><small style="display:block;color:var(--muted)">74/100 · monitor recurring wastage</small><div class="bar" style="margin-top:8px"><i style="width:74%"></i></div></div></div><p style="font-size:12px;color:var(--muted);line-height:1.5">Priority selection considers low score, frequency/size, environmental impact, realistic potential, cost and practicality.</p></div></div>
+  <div class="section-title"><h2>Proof of impact</h2><span>Illustrative demo metrics</span></div>
+  <div class="grid three"><div class="card"><div class="stat-label">WATER WASTAGE</div><div class="stat-num">18 → 6</div><div class="delta">67% reduction · incidents/week</div></div><div class="card"><div class="stat-label">ENERGY INCIDENTS</div><div class="stat-num">42 → 23</div><div class="delta">45% reduction · incidents/week</div></div><div class="card"><div class="stat-label">RECYC. WASTE</div><div class="stat-num">12 → 18 kg</div><div class="delta">50% increase collected/week</div></div></div>
+</section>
+
+<section class="view" id="challenges">
+  <div class="page-head"><h1>Actions & Challenges</h1><p>Small challenges that turn environmental responsibility into a habit.</p></div>
+  <div class="grid action-grid" id="challengeGrid"></div>
+</section>
+
+<section class="view" id="recognition">
+  <div class="page-head"><h1>Recognition Wall</h1><p>Make good environmental work visible. Celebrate the people behind the change.</p></div>
+  <div class="grid three" id="recognitionGrid"></div>
+</section>
+
+<section class="view" id="admin">
+  <div class="page-head"><h1>Teacher / Admin Dashboard</h1><p>Verify actions, manage points, run audits, and keep the system accountable.</p></div>
+  <div class="grid stats"><div class="card"><div class="stat-label">PENDING SUBMISSIONS</div><div class="stat-num" id="pendingCount">7</div><div class="delta">Needs review</div></div><div class="card"><div class="stat-label">VERIFIED ACTIONS</div><div class="stat-num">684</div><div class="delta">↑ 92 this week</div></div><div class="card"><div class="stat-label">CURRENT SCORE</div><div class="stat-num">72/100</div><div class="delta">+14 vs baseline</div></div><div class="card"><div class="stat-label">BUDGET</div><div class="stat-num">৳7,600</div><div class="delta">Tentative low-cost plan</div></div></div>
+  <div class="card"><div class="section-title" style="margin-top:0"><h2>Pending submissions</h2><span>Teacher verification required</span></div><table><thead><tr><th>Student</th><th>Action</th><th>Category</th><th>Points</th><th>Status</th><th>Decision</th></tr></thead><tbody id="pendingTable"></tbody></table></div>
+  <div class="section-title"><h2>Scoring configuration</h2><span>Editable without code</span></div>
+  <div class="card"><div class="form-grid"><div class="field"><label>Waste weight</label><input value="20%"></div><div class="field"><label>Water weight</label><input value="20%"></div><div class="field"><label>Energy weight</label><input value="25%"></div><div class="field"><label>Paper weight</label><input value="15%"></div><div class="field"><label>Greenery weight</label><input value="20%"></div><div class="field"><label>Maximum single-action points</label><input value="50"></div></div><button class="btn primary" style="margin-top:15px" onclick="toast('Scoring configuration saved in demo mode.')">Save configuration</button></div>
+</section>
+</main>
+</div>
+
+<div class="auth-back" id="authBack">
+  <div class="auth-card">
+    <div class="auth-logo">🌱</div>
+    <h2 id="authTitle">Welcome back</h2>
+    <div class="sub" id="authSub">Log in to submit actions, earn Green Points and access your dashboard.</div>
+    <div class="auth-tabs"><button id="loginTab" class="active" onclick="setAuthMode('login')">Log in</button><button id="signupTab" onclick="setAuthMode('signup')">Create account</button></div>
+    <div class="auth-error" id="authError"></div>
+    <div class="auth-fields" id="signupFields" style="display:none">
+      <div><label>Full name</label><input id="signupName" placeholder="Your name"></div>
+      <div><label>Class</label><input id="signupClass" placeholder="e.g. 8B"></div>
+    </div>
+    <div class="auth-fields" style="margin-top:11px">
+      <div><label>Email</label><input id="authEmail" type="email" placeholder="you@example.com" autocomplete="email"></div>
+      <div><label>Password</label><input id="authPassword" type="password" placeholder="At least 6 characters" autocomplete="current-password"></div>
+    </div>
+    <div class="role-note">Student accounts are created by default. Teacher/admin access is controlled securely from the database.</div>
+    <button class="btn primary" id="authSubmit" style="width:100%;margin-top:16px" onclick="submitAuth()">Log in</button>
+    <button class="btn ghost" style="width:100%;margin-top:8px" onclick="closeAuth()">Continue as visitor</button>
+    <div class="auth-note">Public pages such as the leaderboard remain viewable without an account. Your password is handled by the authentication provider and is never stored by this page.</div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+<div class="modal-back" id="modal"><div class="modal"><h2 id="modalTitle">Confirm</h2><p id="modalText"></p><div class="modal-actions"><button class="btn ghost" onclick="closeModal()">Cancel</button><button class="btn primary" id="modalConfirm">Confirm</button></div></div></div>
+
+<script>
+// ===== GREENOVATION REAL ACCOUNT LAYER =====
+// Add your Supabase project values here before deployment. Never use a service_role key.
+const SUPABASE_URL = 'https://zgjfoqefnplprtzkqdmg.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_r3rL6nQodCA1_G50GwTQMA_JvQHQIMW';
+let sb = null;
+let currentUser = null;
+let currentProfile = null;
+let authMode = 'login';
+const configured = !SUPABASE_URL.startsWith('YOUR_') && !SUPABASE_ANON_KEY.startsWith('YOUR_');
+if (configured && window.supabase) sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+function setAuthMode(mode){
+ authMode=mode;
+ document.getElementById('loginTab').classList.toggle('active',mode==='login');
+ document.getElementById('signupTab').classList.toggle('active',mode==='signup');
+ document.getElementById('signupFields').style.display=mode==='signup'?'grid':'none';
+ document.getElementById('authTitle').textContent=mode==='signup'?'Join Greenovation':'Welcome back';
+ document.getElementById('authSub').textContent=mode==='signup'?'Create your student account and start building your Green Points.':'Log in to submit actions, earn Green Points and access your dashboard.';
+ document.getElementById('authSubmit').textContent=mode==='signup'?'Create account':'Log in';
+ document.getElementById('authError').classList.remove('show');
+}
+function openAuth(mode='login'){ if(!configured){ toast('Connect Supabase first to enable real accounts.'); return; } setAuthMode(mode); document.getElementById('authBack').classList.add('show'); }
+function closeAuth(){document.getElementById('authBack').classList.remove('show')}
+function authError(msg){const e=document.getElementById('authError');e.textContent=msg;e.classList.add('show')}
+async function submitAuth(){
+ if(!sb){authError('This build is not connected to Supabase yet. Add your project URL and public key near the top of index.html.');return;}
+ const email=document.getElementById('authEmail').value.trim();
+ const password=document.getElementById('authPassword').value;
+ if(!email || password.length<6){authError('Enter a valid email and a password with at least 6 characters.');return;}
+ try{
+   let result;
+   if(authMode==='signup'){
+     const name=document.getElementById('signupName').value.trim();
+     const cls=document.getElementById('signupClass').value.trim();
+     if(!name){authError('Please enter your full name.');return;}
+     result=await sb.auth.signUp({email,password,options:{data:{full_name:name,class_name:cls}}});
+   }else{result=await sb.auth.signInWithPassword({email,password});}
+   if(result.error) throw result.error;
+   if(authMode==='signup' && result.data?.session===null){closeAuth();toast('Account created. Check your email if confirmation is required.');return;}
+   currentUser=result.data.user;
+   await loadCurrentProfile();
+   closeAuth();
+   refreshAuthUI();
+   toast(authMode==='signup'?'Account created — welcome to Greenovation!':'Welcome back!');
+ }catch(err){authError(err.message||'Authentication failed.')}
+}
+async function loadCurrentProfile(){
+ if(!sb||!currentUser)return;
+ const {data,error}=await sb.from('profiles').select('*').eq('id',currentUser.id).single();
+ if(error) throw error;
+ currentProfile=data;
+}
+function refreshAuthUI(){
+  const area=document.getElementById('authArea');
+
+  if(currentUser && currentProfile){
+    area.innerHTML=`<div class="user-chip">
+  <div class="avatar">${initials(currentProfile.full_name)}</div>
+  <div>${esc(currentProfile.full_name)}</div>
+</div>
+<button class="btn ghost" onclick="logout()">Log out</button>`;
+    document.getElementById('dataBadge').textContent=' LIVE DATA ';
+    document.querySelector('.demo').innerHTML='<strong>● LIVE MODE</strong> Connected to the shared Greenovation database.';
+  }else{
+    area.innerHTML=`<button class="btn primary" onclick="openAuth('login')">Log in</button>
+    <button class="btn ghost" onclick="openAuth('signup')">Create account</button>`;
+  }
+}
+async function logout(){if(sb) await sb.auth.signOut();currentUser=null;currentProfile=null;refreshAuthUI();toast('Logged out. Public pages are still available.');showView('home')}
+function initials(n){return (n||'?').split(/\s+/).map(x=>x[0]).slice(0,2).join('').toUpperCase()}
+function esc(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
+function requireLogin(view){
+ if(!currentUser){openAuth('login');toast('Log in to access this area.');return false;}
+ if((view==='admin') && !['teacher','admin'].includes(currentProfile?.role)){toast('Teacher/admin access required.');return false;}
+ return true;
+}
+async function bootRealData(){
+ if(!sb)return;
+ try{
+  const {data:userData}=await sb.auth.getUser();
+  if(userData?.user){currentUser=userData.user;await loadCurrentProfile();refreshAuthUI();}
+  sb.auth.onAuthStateChange(async (_event,session)=>{
+    if(session?.user){currentUser=session.user;try{await loadCurrentProfile();}catch(e){} refreshAuthUI();}
+    else{currentUser=null;currentProfile=null;refreshAuthUI();}
+  });
+  await loadPublicLeaderboard();
+  if(currentUser) await loadMySubmissions();
+  if(['teacher','admin'].includes(currentProfile?.role)) await loadPendingSubmissions();
+ }catch(e){console.warn('Greenovation live data error',e)}
+}
+async function loadPublicLeaderboard(){
+ if(!sb)return;
+ const {data,error}=await sb.from('public_leaderboard').select('*').order('points',{ascending:false}).limit(100);
+ if(error){console.warn(error);return;}
+ if(data?.length){students.length=0;data.forEach(x=>students.push([x.full_name,x.class_name||'—',x.points]));renderLeaderboard('students');}
+}
+async function loadMySubmissions(){
+ if(!sb||!currentUser)return;
+ const {data,error}=await sb.from('submissions').select('*').eq('user_id',currentUser.id).order('created_at',{ascending:false}).limit(20);
+ if(error)return;
+ const mine=data||[];
+ const box=document.getElementById('mySubmissionList');
+ if(box)box.innerHTML=mine.length?mine.map(x=>`<div class="activity-row"><div class="avatar">${cats.find(c=>c.name===x.category)?.icon||'🌱'}</div><div><p><b>${esc(x.action_name)}</b> · ${esc(x.category)}</p><small>${new Date(x.created_at).toLocaleString()} · <span class="pill ${x.status==='approved'?'green':x.status==='rejected'?'red':'amber'}">${x.status}</span></small></div></div>`).join(''):'<div class="empty">No submissions yet.</div>';
+}
+async function loadPendingSubmissions(){
+ if(!sb||!currentProfile||!['teacher','admin'].includes(currentProfile.role))return;
+ const {data,error}=await sb.from('submissions').select('id,user_id,category,action_name,points,description,location,created_at,profiles(full_name)').eq('status','pending').order('created_at',{ascending:true});
+ if(error)return;
+ const rows=(data||[]).map(x=>[x.profiles?.full_name||'Student',x.action_name,x.category,x.points,x.id]);
+ const el=document.getElementById('pendingTable');
+ if(!el)return;
+ el.innerHTML=rows.length?rows.map((p,i)=>`<tr><td><b>${esc(p[0])}</b></td><td>${esc(p[1])}</td><td>${esc(p[2])}</td><td class="points">+${p[3]}</td><td><span class="pill amber">Pending</span></td><td><button class="btn primary" style="padding:7px 10px;font-size:11px" onclick="reviewLive(${p[4]},'approved')">Approve</button> <button class="btn ghost" style="padding:7px 10px;font-size:11px" onclick="reviewLive(${p[4]},'rejected')">Reject</button></td></tr>`).join(''):'<tr><td colspan="6"><div class="empty">No pending submissions 🎉</div></td></tr>';
+ const pc=document.getElementById('pendingCount');if(pc)pc.textContent=rows.length;
+}
+async function reviewLive(id,status){
+ if(!sb)return;
+ const {error}=await sb.rpc('review_submission',{p_submission_id:id,p_status:status});
+ if(error){toast(error.message);return;}
+ toast(status==='approved'?'Submission approved — points added!':'Submission rejected.');
+ await loadPendingSubmissions();await loadPublicLeaderboard();
+ if(currentUser)await loadCurrentProfile();
+ refreshAuthUI();
+}
+
+// Gate private navigation while leaving public pages open.
+const originalShowView=window.showView;
+window.showView=function(id){
+ if(['student','submit','admin'].includes(id) && !requireLogin(id)) return;
+ originalShowView(id);
+ if(id==='student' && currentProfile){
+   const n=document.getElementById('myPoints');if(n)n.textContent=currentProfile.points.toLocaleString();
+   const a=document.getElementById('myActions');if(a)a.textContent=currentProfile.actions_count;
+   const pn=document.querySelector('#student .profile h2');if(pn)pn.textContent=currentProfile.full_name;
+   const pp=document.querySelector('#student .profile p');if(pp)pp.textContent=`${currentProfile.class_name||'Student'} · ${currentProfile.role}`;
+   loadMySubmissions();
+ }
+ if(id==='admin' && ['teacher','admin'].includes(currentProfile?.role))loadPendingSubmissions();
+};
+
+// Replace the demo submission with a real database submission when connected.
+const originalSubmitAction=window.submitAction;
+window.submitAction=async function(){
+ if(!sb||!currentUser){originalSubmitAction();return;}
+ const cat=document.getElementById('actionCat').value;
+ const opt=document.getElementById('actionType').selectedOptions[0];
+ const name=opt.text.split(' — ')[0]; const pts=Number(document.getElementById('actionType').value);
+ const desc=document.getElementById('actionDesc').value.trim(); const location=document.getElementById('actionLocation').value.trim();
+ const {error}=await sb.from('submissions').insert({user_id:currentUser.id,category:cat,action_name:name,points:pts,description:desc,location:location});
+ if(error){toast(error.message);return;}
+ document.getElementById('actionDesc').value='';document.getElementById('actionLocation').value='';
+ toast(`Submitted “${name}” — waiting for teacher verification.`);
+ await loadMySubmissions();
+};
+
+if(configured)bootRealData();
+else refreshAuthUI();
+</script>
+<script>
+const cats=[
+ {name:'Waste',icon:'♻️',score:68,weight:20},
+ {name:'Water',icon:'💧',score:74,weight:20},
+ {name:'Energy',icon:'⚡',score:61,weight:25},
+ {name:'Paper',icon:'📄',score:81,weight:15},
+ {name:'Greenery',icon:'🌿',score:79,weight:20}
+];
+const actionData={
+ Water:[['Reported a leaking tap',15],['Water Watcher check',10],['Prevented water wastage',20],['Monitored recurring wastage',25]],
+ Energy:[['Switched off unnecessary lights',5],['Empty-room energy check',10],['Classroom Energy Monitor shift',15],['End-of-class switch-off routine',10]],
+ Waste:[['Correctly segregated waste',5],['Recycling collection help',15],['Improved bin labeling',20],['Reduced disposable materials',20]],
+ Paper:[['Used both sides of paper',5],['Reused usable paper',5],['Paper reuse tray support',10],['Reduced unnecessary printing',15]],
+ Greenery:[['Cared for a school plant',10],['Identified neglected plant',10],['Plant-care schedule shift',15],['Green Team activity',20]]
+};
+const students=[
+ ['Ariana','8A',1520],['Nabil','8B',1410],['Safa','7A',1280],['Taseen','8B',1240],['Rafi','8A',1175],['Mahi','7B',1090],['Zayan','8C',1020]
+];
+const activities=[
+ ['SA','Safa','reported a recurring water-wastage problem','Water','+25'],
+ ['NA','Nabil','completed an Energy Monitor shift','Energy','+15'],
+ ['TA','Taseen','helped improve waste segregation','Waste','+20'],
+ ['AR','Ariana','cared for a school plant','Greenery','+10'],
+ ['RF','Rafi','reused usable paper','Paper','+5']
+];
+let pending=[
+ ['Mahi','Reported leaking tap','Water',15],
+ ['Zayan','Empty-room energy check','Energy',10],
+ ['Taseen','Recycling collection help','Waste',15],
+ ['Rafi','Green Team activity','Greenery',20],
+ ['Safa','Reduced unnecessary printing','Paper',15]
+];
+let myPoints=1240,myActions=37;
+
+function showView(id){
+ document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+ document.getElementById(id).classList.add('active');
+ document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('active',b.dataset.view===id));
+ const title=document.querySelector(`[data-view="${id}"]`)?.textContent?.trim()||'Overview';
+ document.getElementById('crumb').textContent='Greenovation / '+title;
+ window.scrollTo({top:0,behavior:'smooth'});
+ if(id==='leaderboard') renderLeaderboard('students');
+}
+document.querySelectorAll('.nav button').forEach(b=>b.onclick=()=>showView(b.dataset.view));
+
+function catCards(target){
+ document.getElementById(target).innerHTML=cats.map(c=>`<div class="card category"><div class="cat-top"><div class="cat-icon">${c.icon}</div><span style="font-size:11px;color:var(--muted)">${c.weight}% weight</span></div><div class="cat-score">${c.score}<span style="font-size:13px;color:var(--muted)">/100</span></div><div class="bar"><i style="width:${c.score}%"></i></div><div class="cat-foot"><span>${c.name}</span><span>${c.score>=75?'Strong':c.score>=60?'Watch':'Priority'}</span></div></div>`).join('');
+}
+catCards('homeCats');catCards('scoreCats');
+
+document.getElementById('weightTable').innerHTML=cats.map(c=>`<tr><td><b>${c.icon} ${c.name}</b></td><td>${c.weight}%</td><td>${c.score}</td><td>${(c.score*c.weight/100).toFixed(1)}</td></tr>`).join('');
+
+document.getElementById('activity').innerHTML=activities.map(a=>`<div class="activity-row"><div class="avatar">${a[0]}</div><div><p><b>${a[1]}</b> ${a[2]} <span class="points">${a[4]}</span></p><small>${a[3]} · verified just now</small></div></div>`).join('');
+
+function loadActions(){
+ const c=document.getElementById('actionCat').value;
+ document.getElementById('actionType').innerHTML=actionData[c].map(x=>`<option value="${x[1]}">${x[0]} — ${x[1]} pts</option>`).join('');
+}
+loadActions();document.getElementById('actionDate').value=new Date().toISOString().slice(0,10);
+
+document.getElementById('actionCards').innerHTML=Object.entries(actionData).flatMap(([cat,arr])=>arr.slice(0,2).map(x=>`<div class="card action-card"><div class="cat-icon">${cats.find(c=>c.name===cat).icon}</div><h3>${x[0]}</h3><p>${cat} · Teacher verification required</p><span class="points">+${x[1]} Green Points</span><button class="btn ghost" onclick="quickAction('${cat}','${x[0]}',${x[1]})">Log this action</button></div>`)).join('');
+
+document.getElementById('challengeGrid').innerHTML=[
+ ['⚡','Switch-Off Challenge','Energy','Turn off unnecessary lights, fans and equipment in empty spaces.',120,186],
+ ['💧','Water Watch','Water','Spot, report and monitor water wastage around the school.',90,121],
+ ['♻️','Waste Sorting Challenge','Waste','Improve segregation and recycling habits in your class.',160,204],
+ ['📄','Paper Saver','Paper','Reuse paper and reduce unnecessary printing.',70,88],
+ ['🌿','Green Guardian','Greenery','Take responsibility for a plant and help it thrive.',54,76],
+ ['🌱','Green Team Sprint','All','Complete verified environmental actions as a team.',210,186]
+].map(x=>`<div class="card action-card"><div class="cat-icon">${x[0]}</div><h3>${x[1]}</h3><p>${x[2]} · ${x[3]}</p><div style="display:flex;justify-content:space-between"><span class="points">+${x[4]} pts</span><span style="font-size:11px;color:var(--muted)">${x[5]} joined</span></div><div class="bar" style="margin-top:11px"><i style="width:${Math.min(100,x[5]/2)}%"></i></div><button class="btn ghost" onclick="toast('Challenge joined in demo mode!')">Join challenge</button></div>`).join('');
+
+document.getElementById('recognitionGrid').innerHTML=[
+ ['💧','Safa','Water Guardian','Identified a recurring water-wastage issue and helped monitor it.','+25'],
+ ['⚡','Nabil','Energy Saver','Completed an Energy Monitor shift and helped build a switch-off routine.','+15'],
+ ['♻️','Taseen','Waste Warrior','Helped improve waste segregation and recycling collection.','+20'],
+ ['🌿','Ariana','Green Guardian','Took responsibility for a neglected school plant.','+10'],
+ ['📄','Rafi','Paper Protector','Helped expand the paper reuse system in his class.','+10'],
+ ['🌱','8B Green Team','Team Spotlight','Completed 64 verified environmental actions this month.','+640']
+].map(x=>`<div class="card"><div style="font-size:30px">${x[0]}</div><h3 style="margin:9px 0 3px">${x[1]}</h3><span class="pill green">${x[2]}</span><p style="font-size:12px;color:var(--muted);line-height:1.5">${x[3]}</p><b class="points">${x[4]} Green Points</b></div>`).join('');
+
+function renderLeaderboard(type){
+ const el=document.getElementById('leaderboardBody');
+ if(type==='students') el.innerHTML=`<table><thead><tr><th>Rank</th><th>Student</th><th>Class</th><th>Green Points</th><th>Actions</th></tr></thead><tbody>${students.map((s,i)=>`<tr><td><b>${i+1}</b></td><td><b>${s[0]}</b>${i===3?' <span class="pill green">You</span>':''}</td><td>${s[1]}</td><td class="points">${s[2].toLocaleString()}</td><td>${Math.round(s[2]/33)}</td></tr>`).join('')}</tbody></table>`;
+ else if(type==='classes') el.innerHTML=`<table><thead><tr><th>Rank</th><th>Class</th><th>Students</th><th>Points</th><th>Participation</th></tr></thead><tbody>${[['8B',31,3640,'78%'],['8A',29,3390,'74%'],['7A',34,3010,'67%'],['7B',27,2440,'61%'],['8C',30,1980,'55%']].map((x,i)=>`<tr><td><b>${i+1}</b></td><td><b>${x[0]}</b></td><td>${x[1]}</td><td class="points">${x[2].toLocaleString()}</td><td>${x[3]}</td></tr>`).join('')}</tbody></table>`;
+ else el.innerHTML=`<table><thead><tr><th>Category</th><th>Top contributor</th><th>Actions</th><th>Points</th></tr></thead><tbody>${[['♻️ Waste','Taseen',18,410],['💧 Water','Safa',14,385],['⚡ Energy','Nabil',22,520],['📄 Paper','Rafi',11,180],['🌿 Greenery','Ariana',15,245]].map(x=>`<tr><td><b>${x[0]}</b></td><td>${x[1]}</td><td>${x[2]}</td><td class="points">${x[3]}</td></tr>`).join('')}</tbody></table>`;
+}
+
+function pendingRender(){
+ document.getElementById('pendingTable').innerHTML=pending.map((p,i)=>`<tr id="p${i}"><td><b>${p[0]}</b></td><td>${p[1]}</td><td>${p[2]}</td><td class="points">+${p[3]}</td><td><span class="pill amber">Pending</span></td><td><button class="btn primary" style="padding:7px 10px;font-size:11px" onclick="approve(${i})">Approve</button> <button class="btn ghost" style="padding:7px 10px;font-size:11px" onclick="reject(${i})">Reject</button></td></tr>`).join('');
+ document.getElementById('pendingCount').textContent=pending.length;
+}
+pendingRender();
+
+function approve(i){
+ const p=pending[i]; myPoints+=p[3];myActions++;
+ document.getElementById('myPoints').textContent=myPoints.toLocaleString();document.getElementById('myActions').textContent=myActions;
+ pending.splice(i,1);pendingRender();toast(`Approved: ${p[0]} earned +${p[3]} Green Points.`);
+}
+function reject(i){const p=pending[i];pending.splice(i,1);pendingRender();toast(`Submission from ${p[0]} rejected in demo mode.`)}
+function quickAction(cat,name,pts){document.getElementById('actionCat').value=cat;loadActions();[...document.getElementById('actionType').options].forEach(o=>{if(o.text.startsWith(name))o.selected=true});showView('submit');toast('Action selected — add details and submit for verification.')}
+function submitAction(){
+ const cat=document.getElementById('actionCat').value,name=document.getElementById('actionType').selectedOptions[0].text.split(' — ')[0],pts=document.getElementById('actionType').value;
+ pending.push(['Taseen',name,cat,Number(pts)]);pendingRender();
+ document.getElementById('actionDesc').value='';document.getElementById('actionLocation').value='';
+ toast(`Submitted “${name}” for teacher verification.`);
+}
+function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');clearTimeout(window.tt);window.tt=setTimeout(()=>t.classList.remove('show'),2800)}
+function presentationMode(){document.body.classList.toggle('presentation');showView('home');toast('Presentation mode ready — use full screen for the cleanest demo.')}
+function closeModal(){document.getElementById('modal').classList.remove('show')}
+
+function makeChart(id,type,data,options){
+ const el=document.getElementById(id);if(!el)return;
+ new Chart(el,{type,data,options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,max:100,grid:{color:'#edf2ee'},ticks:{font:{size:10}}},x:{grid:{display:false},ticks:{font:{size:10}}}},...options}});
+}
+makeChart('homeChart','line',{labels:['Baseline','Week 4','Week 8','Current'],datasets:[{data:[58,63,68,72],borderColor:'#16834a',backgroundColor:'rgba(22,131,74,.10)',fill:true,tension:.35,pointRadius:4}]},{});
+makeChart('studentChart','radar',{labels:['Waste','Water','Energy','Paper','Greenery'],datasets:[{data:[72,84,68,91,76],borderColor:'#16834a',backgroundColor:'rgba(22,131,74,.13)',pointBackgroundColor:'#16834a'}]},{scales:{r:{beginAtZero:true,max:100,ticks:{display:false},grid:{color:'#e3ebe5'},pointLabels:{font:{size:11}}}}});
+makeChart('progressChart','bar',{labels:['Waste','Water','Energy','Paper','Greenery'],datasets:[{label:'Baseline',data:[55,48,52,72,63],backgroundColor:'#cfe0d5'},{label:'Current',data:[68,74,61,81,79],backgroundColor:'#16834a'}]},{plugins:{legend:{display:true,labels:{font:{size:11}}}}});
+
+</script>
+</body>
+</html>

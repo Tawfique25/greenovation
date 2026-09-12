@@ -199,12 +199,13 @@ table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:13px 9px
     <div class="auth-fields" id="signupFields" style="display:none">
       <div><label>Full name</label><input id="signupName" placeholder="Your name"></div>
       <div><label>Class</label><input id="signupClass" placeholder="e.g. 8B"></div>
+      <div><label>Account type</label><select id="signupRole"><option value="student">Student</option><option value="teacher">Teacher</option><option value="admin">Admin</option></select></div>
     </div>
     <div class="auth-fields" style="margin-top:11px">
       <div><label>Email</label><input id="authEmail" type="email" placeholder="you@example.com" autocomplete="email"></div>
       <div><label>Password</label><input id="authPassword" type="password" placeholder="At least 6 characters" autocomplete="current-password"></div>
     </div>
-    <div class="role-note">Student accounts are created by default. Teacher/admin access is controlled securely from the database.</div>
+    <div class="role-note" id="roleNote">Student accounts are created immediately. Teacher/admin accounts can be registered here, but staff access must be approved by an administrator in the database before the account gets teacher/admin permissions.</div>
     <button class="btn primary" id="authSubmit" style="width:100%;margin-top:16px" onclick="submitAuth()">Log in</button>
     <button class="btn ghost" style="width:100%;margin-top:8px" onclick="continueAsVisitor();closeAuth()">Continue as visitor</button>
     <div class="auth-note">Public pages such as the leaderboard remain viewable without an account. Your password is handled by the authentication provider and is never stored by this page.</div>
@@ -244,8 +245,10 @@ function setAuthMode(mode){
  document.getElementById('signupTab').classList.toggle('active',mode==='signup');
  document.getElementById('signupFields').style.display=mode==='signup'?'grid':'none';
  document.getElementById('authTitle').textContent=mode==='signup'?'Join Greenovation':'Welcome back';
- document.getElementById('authSub').textContent=mode==='signup'?'Create your student account and start building your Green Points.':'Log in to submit actions, earn Green Points and access your dashboard.';
+ document.getElementById('authSub').textContent=mode==='signup'?'Create your Greenovation account. Choose Student, Teacher or Admin.':'Log in to access your Greenovation account.';
  document.getElementById('authSubmit').textContent=mode==='signup'?'Create account':'Log in';
+ const roleNote=document.getElementById('roleNote');
+ if(roleNote) roleNote.textContent=mode==='signup'?'Student accounts are created immediately. Teacher/admin accounts can be registered here, but staff access must be approved by an administrator in the database before the account gets teacher/admin permissions.':'Your account is saved securely in Supabase. Your access level (Student, Teacher or Admin) comes from your saved profile.';
  document.getElementById('authError').classList.remove('show');
 }
 function openAuth(mode='login'){
@@ -265,8 +268,9 @@ async function submitAuth(){
    if(authMode==='signup'){
      const name=document.getElementById('signupName').value.trim();
      const cls=document.getElementById('signupClass').value.trim();
+     const requestedRole=document.getElementById('signupRole').value;
      if(!name){authError('Please enter your full name.');return;}
-     result=await sb.auth.signUp({email,password,options:{data:{full_name:name,class_name:cls}}});
+     result=await sb.auth.signUp({email,password,options:{data:{full_name:name,class_name:cls,requested_role:requestedRole}}});
    }else{result=await sb.auth.signInWithPassword({email,password});}
    if(result.error) throw result.error;
    if(authMode==='signup' && result.data?.session===null){closeAuth();toast('Account created. Check your email if confirmation is required.');return;}
@@ -274,7 +278,7 @@ async function submitAuth(){
    await loadCurrentProfile();
    closeAuth();
    refreshAuthUI();
-   toast(authMode==='signup'?'Account created — welcome to Greenovation!':'Welcome back!');
+   toast(authMode==='signup' ? (document.getElementById('signupRole')?.value!=='student' ? 'Account created. Staff access will be enabled after administrator approval.' : 'Account created — welcome to Greenovation!') : 'Welcome back!');
  }catch(err){authError(err.message||'Authentication failed.')}
 }
 async function loadCurrentProfile(){
@@ -310,11 +314,10 @@ function continueAsVisitor(){
  toast('Visitor mode enabled. Log in anytime to unlock all features.');
 }
 function openAuthFromGate(mode){
-
   localStorage.removeItem('greenovation_visitor');
   setAuthMode(mode);
   document.getElementById('authBack').classList.add('show');
-}}
+}
 async function logout(){if(sb) await sb.auth.signOut();currentUser=null;currentProfile=null;localStorage.removeItem('greenovation_visitor');refreshAuthUI();showView('home');showEntryGate();toast('Logged out. You can continue as a visitor or log in again.')}
 function initials(n){return (n||'?').split(/\s+/).map(x=>x[0]).slice(0,2).join('').toUpperCase()}
 function esc(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}

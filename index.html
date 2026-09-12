@@ -248,7 +248,11 @@ function setAuthMode(mode){
  document.getElementById('authSubmit').textContent=mode==='signup'?'Create account':'Log in';
  document.getElementById('authError').classList.remove('show');
 }
-function openAuth(mode='login'){ if(!configured){ toast('Connect Supabase first to enable real accounts.'); return; } localStorage.removeItem('greenovation_visitor'); setAuthMode(mode); document.getElementById('authBack').classList.add('show'); }
+function openAuth(mode='login'){
+  localStorage.removeItem('greenovation_visitor');
+  setAuthMode(mode);
+  document.getElementById('authBack').classList.add('show');
+}
 function closeAuth(){document.getElementById('authBack').classList.remove('show'); if(!currentUser && !localStorage.getItem('greenovation_visitor')) showEntryGate();}
 function authError(msg){const e=document.getElementById('authError');e.textContent=msg;e.classList.add('show')}
 async function submitAuth(){
@@ -306,9 +310,11 @@ function continueAsVisitor(){
  toast('Visitor mode enabled. Log in anytime to unlock all features.');
 }
 function openAuthFromGate(mode){
- localStorage.removeItem('greenovation_visitor');
- openAuth(mode);
-}
+
+  localStorage.removeItem('greenovation_visitor');
+  setAuthMode(mode);
+  document.getElementById('authBack').classList.add('show');
+}}
 async function logout(){if(sb) await sb.auth.signOut();currentUser=null;currentProfile=null;localStorage.removeItem('greenovation_visitor');refreshAuthUI();showView('home');showEntryGate();toast('Logged out. You can continue as a visitor or log in again.')}
 function initials(n){return (n||'?').split(/\s+/).map(x=>x[0]).slice(0,2).join('').toUpperCase()}
 function esc(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}

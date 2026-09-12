@@ -5,7 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Greenovation — School Environment Score</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
 <style>
 .auth-area{display:flex;align-items:center;gap:9px}.user-chip{display:flex;align-items:center;gap:8px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:7px 10px;font-size:12px;font-weight:750}.user-chip small{display:block;color:var(--muted);font-weight:500}.auth-back{position:fixed;inset:0;background:rgba(5,18,11,.62);display:none;place-items:center;z-index:400;padding:18px}.auth-back.show{display:grid}.auth-card{width:min(460px,100%);background:#fff;border-radius:22px;padding:26px;box-shadow:0 30px 100px rgba(0,0,0,.25)}.auth-logo{width:48px;height:48px;border-radius:15px;background:linear-gradient(135deg,#2ed477,#0c6b3c);display:grid;place-items:center;font-size:24px;margin-bottom:14px}.auth-card h2{margin:0 0 5px}.auth-card .sub{color:var(--muted);font-size:13px;line-height:1.5;margin-bottom:18px}.auth-tabs{display:grid;grid-template-columns:1fr 1fr;background:#eef5f0;border-radius:11px;padding:4px;margin-bottom:16px}.auth-tabs button{border:0;background:transparent;padding:9px;border-radius:8px;font-weight:800;color:var(--muted)}.auth-tabs button.active{background:#fff;color:var(--ink);box-shadow:0 2px 8px rgba(18,50,31,.08)}.auth-fields{display:grid;gap:11px}.auth-fields label{font-size:12px;font-weight:800}.auth-fields input{width:100%;border:1px solid var(--line);border-radius:10px;padding:11px;box-sizing:border-box}.auth-note{font-size:11px;color:var(--muted);margin-top:12px;line-height:1.45}.auth-error{background:#fdecec;color:#a63d3d;border-radius:10px;padding:10px;font-size:12px;margin-bottom:11px;display:none}.auth-error.show{display:block}.role-note{background:#eef8f1;border-radius:10px;padding:10px;font-size:11px;color:#27633f;margin-top:10px}.locked{opacity:.55}.auth-required{display:none}.public-badge{background:#e8f7ee;color:#11723f;padding:5px 8px;border-radius:20px;font-size:10px;font-weight:900}.mobile-menu{display:none}
 @media(max-width:760px){.auth-area{width:100%;justify-content:flex-end}.topbar{flex-wrap:wrap}.mobile-menu{display:block}}
@@ -221,23 +223,31 @@ table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:13px 9px
       <button class="btn ghost" onclick="openAuthFromGate('signup')">Create account</button>
       <button class="visitor-link" onclick="continueAsVisitor()">Continue as visitor →</button>
     </div>
-    <div class="entry-status">Your account and login session are securely saved by Supabase. You will normally stay signed in when you return.</div>
+    <div class="entry-status">Your account and login session are securely saved by Firebase. You will normally stay signed in when you return.</div>
   </div>
 </div>
 <div class="toast" id="toast"></div>
 <div class="modal-back" id="modal"><div class="modal"><h2 id="modalTitle">Confirm</h2><p id="modalText"></p><div class="modal-actions"><button class="btn ghost" onclick="closeModal()">Cancel</button><button class="btn primary" id="modalConfirm">Confirm</button></div></div></div>
 
 <script>
-// ===== GREENOVATION REAL ACCOUNT LAYER =====
-// Add your Supabase project values here before deployment. Never use a service_role key.
-const SUPABASE_URL = 'https://zgjfoqefnplprtzkqdmg.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_r3rL6nQodCA1_G50GwTQMA_JvQHQIMW';
-let sb = null;
-let currentUser = null;
-let currentProfile = null;
-let authMode = 'login';
-const configured = !SUPABASE_URL.startsWith('YOUR_') && !SUPABASE_ANON_KEY.startsWith('YOUR_');
-if (configured && window.supabase) sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// ===== GREENOVATION FIREBASE ACCOUNT + DATA LAYER =====
+const firebaseConfig = {
+  apiKey: "AIzaSyDevpgdn0nNrAbJcc28YygspBxPXXN_uNc",
+  authDomain: "greenovation-d6efd.firebaseapp.com",
+  projectId: "greenovation-d6efd",
+  storageBucket: "greenovation-d6efd.firebasestorage.app",
+  messagingSenderId: "944476111453",
+  appId: "1:944476111453:web:c1d945b2e35775944183b4",
+  measurementId: "G-3C03HJDNC3"
+};
+
+let firebaseApp=null, auth=null, db=null;
+let currentUser=null, currentProfile=null, authMode='login';
+try{
+  firebaseApp=firebase.initializeApp(firebaseConfig);
+  auth=firebase.auth();
+  db=firebase.firestore();
+}catch(e){console.error('Firebase initialization failed',e);}
 
 function setAuthMode(mode){
  authMode=mode;
@@ -248,49 +258,68 @@ function setAuthMode(mode){
  document.getElementById('authSub').textContent=mode==='signup'?'Create your Greenovation account. Choose Student, Teacher or Admin.':'Log in to access your Greenovation account.';
  document.getElementById('authSubmit').textContent=mode==='signup'?'Create account':'Log in';
  const roleNote=document.getElementById('roleNote');
- if(roleNote) roleNote.textContent=mode==='signup'?'Student accounts are created immediately. Teacher/admin accounts can be registered here, but staff access must be approved by an administrator in the database before the account gets teacher/admin permissions.':'Your account is saved securely in Supabase. Your access level (Student, Teacher or Admin) comes from your saved profile.';
+ if(roleNote) roleNote.textContent=mode==='signup'?'Student accounts are created immediately. Teacher/admin requests start as Student until an administrator approves the role.':'Your account is saved securely in Firebase. Your access level comes from your saved profile.';
  document.getElementById('authError').classList.remove('show');
 }
 function openAuth(mode='login'){
-  localStorage.removeItem('greenovation_visitor');
-  setAuthMode(mode);
-  document.getElementById('authBack').classList.add('show');
+ localStorage.removeItem('greenovation_visitor');
+ setAuthMode(mode);
+ document.getElementById('authBack').classList.add('show');
 }
-function closeAuth(){document.getElementById('authBack').classList.remove('show'); if(!currentUser && !localStorage.getItem('greenovation_visitor')) showEntryGate();}
-function authError(msg){const e=document.getElementById('authError');e.textContent=msg;e.classList.add('show')}
+function closeAuth(){
+ document.getElementById('authBack').classList.remove('show');
+ if(!currentUser && !localStorage.getItem('greenovation_visitor')) showEntryGate();
+}
+function authError(msg){const e=document.getElementById('authError');e.textContent=msg;e.classList.add('show');}
+
 async function submitAuth(){
- if(!sb){authError('This build is not connected to Supabase yet. Add your project URL and public key near the top of index.html.');return;}
+ if(!auth){authError('Firebase could not start. Refresh the page and try again.');return;}
  const email=document.getElementById('authEmail').value.trim();
  const password=document.getElementById('authPassword').value;
  if(!email || password.length<6){authError('Enter a valid email and a password with at least 6 characters.');return;}
  try{
-   let result;
    if(authMode==='signup'){
      const name=document.getElementById('signupName').value.trim();
      const cls=document.getElementById('signupClass').value.trim();
      const requestedRole=document.getElementById('signupRole').value;
      if(!name){authError('Please enter your full name.');return;}
-     result=await sb.auth.signUp({email,password,options:{data:{full_name:name,class_name:cls,requested_role:requestedRole}}});
-   }else{result=await sb.auth.signInWithPassword({email,password});}
-   if(result.error) throw result.error;
-   if(authMode==='signup' && result.data?.session===null){closeAuth();toast('Account created. Check your email if confirmation is required.');return;}
-   currentUser=result.data.user;
-   await loadCurrentProfile();
-   closeAuth();
-   refreshAuthUI();
-   toast(authMode==='signup' ? (document.getElementById('signupRole')?.value!=='student' ? 'Account created. Staff access will be enabled after administrator approval.' : 'Account created — welcome to Greenovation!') : 'Welcome back!');
- }catch(err){authError(err.message||'Authentication failed.')}
+     const cred=await auth.createUserWithEmailAndPassword(email,password);
+     currentUser=cred.user;
+     await db.collection('users').doc(currentUser.uid).set({
+       name, email, className:cls, role:'student', requestedRole,
+       points:0, actionsCount:0, createdAt:firebase.firestore.FieldValue.serverTimestamp()
+     });
+     currentProfile={name,email,className:cls,role:'student',points:0,actionsCount:0};
+     closeAuth(); refreshAuthUI();
+     toast(requestedRole==='student'?'Account created — welcome to Greenovation!':'Account created. Staff access will be enabled after administrator approval.');
+   }else{
+     const cred=await auth.signInWithEmailAndPassword(email,password);
+     currentUser=cred.user;
+     await loadCurrentProfile();
+     closeAuth(); refreshAuthUI();
+     toast('Welcome back!');
+   }
+ }catch(err){
+   let msg=err.message||'Authentication failed.';
+   if(err.code==='auth/email-already-in-use') msg='That email already has an account. Try Log in instead.';
+   if(err.code==='auth/invalid-credential' || err.code==='auth/wrong-password' || err.code==='auth/user-not-found') msg='Email or password is incorrect.';
+   if(err.code==='auth/weak-password') msg='Password must be at least 6 characters.';
+   authError(msg);
+ }
 }
+
 async function loadCurrentProfile(){
- if(!sb||!currentUser)return;
- const {data,error}=await sb.from('profiles').select('*').eq('id',currentUser.id).single();
- if(error) throw error;
- currentProfile=data;
+ if(!db||!currentUser)return;
+ const snap=await db.collection('users').doc(currentUser.uid).get();
+ if(!snap.exists){
+   await db.collection('users').doc(currentUser.uid).set({name:currentUser.displayName||'Student',email:currentUser.email||'',className:'',role:'student',points:0,actionsCount:0,createdAt:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});
+   currentProfile={name:currentUser.displayName||'Student',email:currentUser.email||'',className:'',role:'student',points:0,actionsCount:0};
+ }else currentProfile=snap.data();
 }
 function refreshAuthUI(){
  const area=document.getElementById('authArea');
  if(currentUser && currentProfile){
-   area.innerHTML=`<div class="user-chip"><div class="avatar" style="width:30px;height:30px">${initials(currentProfile.full_name)}</div><div>${esc(currentProfile.full_name)}<small>${currentProfile.role==='student'?'Student':'Staff'} · ${currentProfile.points.toLocaleString()} pts</small></div></div><button class="btn ghost" onclick="logout()">Log out</button>`;
+   area.innerHTML=`<div class="user-chip"><div class="avatar" style="width:30px;height:30px">${initials(currentProfile.name)}</div><div>${esc(currentProfile.name)}<small>${currentProfile.role==='student'?'Student':'Staff'} · ${Number(currentProfile.points||0).toLocaleString()} pts</small></div></div><button class="btn ghost" onclick="logout()">Log out</button>`;
    document.getElementById('dataBadge').textContent='● LIVE DATA';
    document.querySelector('.demo').innerHTML='<strong>● LIVE MODE</strong> Connected to the shared Greenovation database.';
    hideEntryGate();
@@ -300,125 +329,111 @@ function refreshAuthUI(){
    document.querySelector('.demo').innerHTML='<strong>● VISITOR MODE</strong> Log in to unlock student features and saved activity.';
  }
 }
-function hideEntryGate(){
- const gate=document.getElementById('entryGate');
- if(gate)gate.classList.add('hidden');
-}
-function showEntryGate(){
- const gate=document.getElementById('entryGate');
- if(gate)gate.classList.remove('hidden');
-}
-function continueAsVisitor(){
- localStorage.setItem('greenovation_visitor','1');
- hideEntryGate();
- toast('Visitor mode enabled. Log in anytime to unlock all features.');
-}
-function openAuthFromGate(mode){
-  localStorage.removeItem('greenovation_visitor');
-  setAuthMode(mode);
-  document.getElementById('authBack').classList.add('show');
-}
-async function logout(){if(sb) await sb.auth.signOut();currentUser=null;currentProfile=null;localStorage.removeItem('greenovation_visitor');refreshAuthUI();showView('home');showEntryGate();toast('Logged out. You can continue as a visitor or log in again.')}
+function hideEntryGate(){const gate=document.getElementById('entryGate');if(gate)gate.classList.add('hidden');}
+function showEntryGate(){const gate=document.getElementById('entryGate');if(gate)gate.classList.remove('hidden');}
+function continueAsVisitor(){localStorage.setItem('greenovation_visitor','1');hideEntryGate();toast('Visitor mode enabled. Log in anytime to unlock all features.');}
+function openAuthFromGate(mode){localStorage.removeItem('greenovation_visitor');setAuthMode(mode);document.getElementById('authBack').classList.add('show');}
+async function logout(){try{if(auth)await auth.signOut();}catch(e){} currentUser=null;currentProfile=null;localStorage.removeItem('greenovation_visitor');refreshAuthUI();showView('home');showEntryGate();toast('Logged out. You can continue as a visitor or log in again.');}
 function initials(n){return (n||'?').split(/\s+/).map(x=>x[0]).slice(0,2).join('').toUpperCase()}
 function esc(v){return String(v??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
 function requireLogin(view){
  if(!currentUser){openAuth('login');toast('Log in to access this area.');return false;}
- if((view==='admin') && !['teacher','admin'].includes(currentProfile?.role)){toast('Teacher/admin access required.');return false;}
+ if(view==='admin' && !['teacher','admin'].includes(currentProfile?.role)){toast('Teacher/admin access required.');return false;}
  return true;
 }
+
 async function bootRealData(){
- if(!sb)return;
- try{
-  const {data:userData}=await sb.auth.getUser();
-  if(userData?.user){currentUser=userData.user;await loadCurrentProfile();refreshAuthUI();}
-  sb.auth.onAuthStateChange(async (_event,session)=>{
-    if(session?.user){currentUser=session.user;try{await loadCurrentProfile();}catch(e){} refreshAuthUI();}
-    else{currentUser=null;currentProfile=null;refreshAuthUI();}
-  });
-  await loadPublicLeaderboard();
-  if(currentUser) await loadMySubmissions();
-  if(['teacher','admin'].includes(currentProfile?.role)) await loadPendingSubmissions();
- }catch(e){console.warn('Greenovation live data error',e)}
+ if(!auth||!db)return;
+ auth.onAuthStateChanged(async user=>{
+   currentUser=user||null;
+   if(user){
+     try{await loadCurrentProfile();refreshAuthUI();await loadMySubmissions();if(['teacher','admin'].includes(currentProfile?.role))await loadPendingSubmissions();}catch(e){console.error(e);authError('Could not load your profile.');}
+   }else{currentProfile=null;refreshAuthUI();}
+ });
+ await loadPublicLeaderboard();
 }
 async function loadPublicLeaderboard(){
- if(!sb)return;
- const {data,error}=await sb.from('public_leaderboard').select('*').order('points',{ascending:false}).limit(100);
- if(error){console.warn(error);return;}
- if(data?.length){students.length=0;data.forEach(x=>students.push([x.full_name,x.class_name||'—',x.points]));renderLeaderboard('students');}
+ if(!db)return;
+ try{
+   const snap=await db.collection('users').orderBy('points','desc').limit(100).get();
+   const data=[];snap.forEach(doc=>{const x=doc.data();data.push([x.name||'Student',x.className||'—',Number(x.points||0)]);});
+   if(data.length){students.length=0;data.forEach(x=>students.push(x));renderLeaderboard('students');}
+ }catch(e){console.warn('Leaderboard error',e);}
 }
 async function loadMySubmissions(){
- if(!sb||!currentUser)return;
- const {data,error}=await sb.from('submissions').select('*').eq('user_id',currentUser.id).order('created_at',{ascending:false}).limit(20);
- if(error)return;
- const mine=data||[];
- const box=document.getElementById('mySubmissionList');
- if(box)box.innerHTML=mine.length?mine.map(x=>`<div class="activity-row"><div class="avatar">${cats.find(c=>c.name===x.category)?.icon||'🌱'}</div><div><p><b>${esc(x.action_name)}</b> · ${esc(x.category)}</p><small>${new Date(x.created_at).toLocaleString()} · <span class="pill ${x.status==='approved'?'green':x.status==='rejected'?'red':'amber'}">${x.status}</span></small></div></div>`).join(''):'<div class="empty">No submissions yet.</div>';
+ if(!db||!currentUser)return;
+ try{
+   const snap=await db.collection('submissions').where('userId','==',currentUser.uid).orderBy('createdAt','desc').limit(20).get();
+   const mine=[];snap.forEach(d=>mine.push({id:d.id,...d.data()}));
+   const box=document.getElementById('mySubmissionList');
+   if(box)box.innerHTML=mine.length?mine.map(x=>`<div class="activity-row"><div class="avatar">${cats.find(c=>c.name===x.category)?.icon||'🌱'}</div><div><p><b>${esc(x.actionName)}</b> · ${esc(x.category)}</p><small>${x.createdAt?.toDate?x.createdAt.toDate().toLocaleString():'Just now'} · <span class="pill ${x.status==='approved'?'green':x.status==='rejected'?'red':'amber'}">${esc(x.status)}</span></small></div></div>`).join(''):'<div class="empty">No submissions yet.</div>';
+ }catch(e){console.warn('My submissions error',e);}
 }
 async function loadPendingSubmissions(){
- if(!sb||!currentProfile||!['teacher','admin'].includes(currentProfile.role))return;
- const {data,error}=await sb.from('submissions').select('id,user_id,category,action_name,points,description,location,created_at,profiles(full_name)').eq('status','pending').order('created_at',{ascending:true});
- if(error)return;
- const rows=(data||[]).map(x=>[x.profiles?.full_name||'Student',x.action_name,x.category,x.points,x.id]);
- const el=document.getElementById('pendingTable');
- if(!el)return;
- el.innerHTML=rows.length?rows.map((p,i)=>`<tr><td><b>${esc(p[0])}</b></td><td>${esc(p[1])}</td><td>${esc(p[2])}</td><td class="points">+${p[3]}</td><td><span class="pill amber">Pending</span></td><td><button class="btn primary" style="padding:7px 10px;font-size:11px" onclick="reviewLive(${p[4]},'approved')">Approve</button> <button class="btn ghost" style="padding:7px 10px;font-size:11px" onclick="reviewLive(${p[4]},'rejected')">Reject</button></td></tr>`).join(''):'<tr><td colspan="6"><div class="empty">No pending submissions 🎉</div></td></tr>';
- const pc=document.getElementById('pendingCount');if(pc)pc.textContent=rows.length;
+ if(!db||!currentProfile||!['teacher','admin'].includes(currentProfile.role))return;
+ try{
+   const snap=await db.collection('submissions').where('status','==','pending').orderBy('createdAt','asc').get();
+   const rows=[];snap.forEach(d=>{const x=d.data();rows.push({id:d.id,...x});});
+   const el=document.getElementById('pendingTable');if(!el)return;
+   el.innerHTML=rows.length?rows.map(p=>`<tr><td><b>${esc(p.studentName||'Student')}</b></td><td>${esc(p.actionName)}</td><td>${esc(p.category)}</td><td class="points">+${Number(p.points||0)}</td><td><span class="pill amber">Pending</span></td><td><button class="btn primary" style="padding:7px 10px;font-size:11px" onclick="reviewLive('${p.id}','approved')">Approve</button> <button class="btn ghost" style="padding:7px 10px;font-size:11px" onclick="reviewLive('${p.id}','rejected')">Reject</button></td></tr>`).join(''):'<tr><td colspan="6"><div class="empty">No pending submissions 🎉</div></td></tr>';
+   const pc=document.getElementById('pendingCount');if(pc)pc.textContent=rows.length;
+ }catch(e){console.warn('Pending submissions error',e);}
 }
 async function reviewLive(id,status){
- if(!sb)return;
- const {error}=await sb.rpc('review_submission',{p_submission_id:id,p_status:status});
- if(error){toast(error.message);return;}
- toast(status==='approved'?'Submission approved — points added!':'Submission rejected.');
- await loadPendingSubmissions();await loadPublicLeaderboard();
- if(currentUser)await loadCurrentProfile();
- refreshAuthUI();
+ if(!db||!currentProfile||!['teacher','admin'].includes(currentProfile.role)){toast('Teacher/admin access required.');return;}
+ try{
+   const subRef=db.collection('submissions').doc(id);
+   await db.runTransaction(async tx=>{
+     const subSnap=await tx.get(subRef);
+     if(!subSnap.exists)throw new Error('Submission not found.');
+     const sub=subSnap.data();
+     if(sub.status!=='pending')throw new Error('This submission has already been reviewed.');
+     tx.update(subRef,{status,reviewedBy:currentUser.uid,reviewedAt:firebase.firestore.FieldValue.serverTimestamp()});
+     if(status==='approved'){
+       const userRef=db.collection('users').doc(sub.userId);
+       const userSnap=await tx.get(userRef);
+       if(!userSnap.exists)throw new Error('Student profile not found.');
+       const u=userSnap.data();
+       tx.update(userRef,{points:Number(u.points||0)+Number(sub.points||0),actionsCount:Number(u.actionsCount||0)+1});
+     }
+   });
+   toast(status==='approved'?'Submission approved — points added!':'Submission rejected.');
+   await loadPendingSubmissions();await loadPublicLeaderboard();
+   if(currentUser)await loadCurrentProfile();refreshAuthUI();
+ }catch(e){toast(e.message||'Could not review submission.');}
 }
 
-// Gate private navigation while leaving public pages open.
 const originalShowView=window.showView;
 window.showView=function(id){
  if(['student','submit','admin'].includes(id) && !requireLogin(id)) return;
  originalShowView(id);
  if(id==='student' && currentProfile){
-   const n=document.getElementById('myPoints');if(n)n.textContent=currentProfile.points.toLocaleString();
-   const a=document.getElementById('myActions');if(a)a.textContent=currentProfile.actions_count;
-   const pn=document.querySelector('#student .profile h2');if(pn)pn.textContent=currentProfile.full_name;
-   const pp=document.querySelector('#student .profile p');if(pp)pp.textContent=`${currentProfile.class_name||'Student'} · ${currentProfile.role}`;
+   const n=document.getElementById('myPoints');if(n)n.textContent=Number(currentProfile.points||0).toLocaleString();
+   const a=document.getElementById('myActions');if(a)a.textContent=Number(currentProfile.actionsCount||0);
+   const pn=document.querySelector('#student .profile h2');if(pn)pn.textContent=currentProfile.name||'Student';
+   const pp=document.querySelector('#student .profile p');if(pp)pp.textContent=`${currentProfile.className||'Student'} · ${currentProfile.role||'student'}`;
    loadMySubmissions();
  }
  if(id==='admin' && ['teacher','admin'].includes(currentProfile?.role))loadPendingSubmissions();
 };
 
-// Replace the demo submission with a real database submission when connected.
 const originalSubmitAction=window.submitAction;
 window.submitAction=async function(){
- if(!sb||!currentUser){originalSubmitAction();return;}
+ if(!db||!currentUser){originalSubmitAction();return;}
  const cat=document.getElementById('actionCat').value;
  const opt=document.getElementById('actionType').selectedOptions[0];
- const name=opt.text.split(' — ')[0]; const pts=Number(document.getElementById('actionType').value);
- const desc=document.getElementById('actionDesc').value.trim(); const location=document.getElementById('actionLocation').value.trim();
- const {error}=await sb.from('submissions').insert({user_id:currentUser.id,category:cat,action_name:name,points:pts,description:desc,location:location});
- if(error){toast(error.message);return;}
- document.getElementById('actionDesc').value='';document.getElementById('actionLocation').value='';
- toast(`Submitted “${name}” — waiting for teacher verification.`);
- await loadMySubmissions();
+ const name=opt.text.split(' — ')[0];const pts=Number(document.getElementById('actionType').value);
+ const desc=document.getElementById('actionDesc').value.trim();const location=document.getElementById('actionLocation').value.trim();
+ try{
+   await db.collection('submissions').add({userId:currentUser.uid,studentName:currentProfile?.name||currentUser.email,category:cat,actionName:name,points:pts,description:desc,location,status:'pending',createdAt:firebase.firestore.FieldValue.serverTimestamp()});
+   document.getElementById('actionDesc').value='';document.getElementById('actionLocation').value='';
+   toast(`Submitted “${name}” — waiting for teacher verification.`);await loadMySubmissions();
+ }catch(e){toast(e.message||'Could not submit action.');}
 };
 
-if(configured){
- bootRealData().then(()=>{
-   if(currentUser) hideEntryGate();
-   else if(localStorage.getItem('greenovation_visitor')==='1') hideEntryGate();
-   else showEntryGate();
- }).catch(()=>{
-   if(localStorage.getItem('greenovation_visitor')==='1') hideEntryGate();
-   else showEntryGate();
- });
-}else{
- refreshAuthUI();
- if(localStorage.getItem('greenovation_visitor')==='1') hideEntryGate();
- else showEntryGate();
-}
-
+bootRealData().then(()=>{
+ if(currentUser||localStorage.getItem('greenovation_visitor')==='1')hideEntryGate();else showEntryGate();
+}).catch(e=>{console.warn(e);if(localStorage.getItem('greenovation_visitor')==='1')hideEntryGate();else showEntryGate();});
 </script>
 <script>
 const cats=[

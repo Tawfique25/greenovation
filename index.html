@@ -153,7 +153,7 @@ async function loadLiveDashboard(){
    let school=schoolScopeForLive();
    let usersSnap=await db.collection('users').where('role','==','student').get();
    const users=[];usersSnap.forEach(d=>{const x=d.data();if(x.accountStatus==='approved'&&(!school||school==='__ALL_SCHOOLS__'||x.school===school))users.push({id:d.id,...x})});
-   let subSnap=await db.collection('submissions').where('status','==','approved').limit(300).get();
+   let subSnap=await db.collection('submissions').where('status','==','approved').get();
    const subs=[];subSnap.forEach(d=>{const x=d.data();if(!school||school==='__ALL_SCHOOLS__'||x.school===school)subs.push({id:d.id,...x})});
    const pending=[];if(currentProfile&&['teacher','admin'].includes(currentProfile.role)){let pendingSnap;if(currentProfile.role==='admin')pendingSnap=await db.collection('submissions').where('status','==','pending').limit(300).get();else pendingSnap=await db.collection('submissions').where('status','==','pending').where('school','==',currentProfile.school).limit(300).get();pendingSnap.forEach(d=>pending.push({id:d.id,...d.data()}))}
    let assignSnap=null;const assigns=[];if(currentProfile?.role==='student'){assignSnap=await db.collection('assignments').where('assignedToUid','==',currentUser.uid).limit(300).get()}else if(currentProfile?.role==='teacher'){assignSnap=await db.collection('assignments').where('school','==',currentProfile.school).limit(300).get()}else if(currentProfile?.role==='admin'){assignSnap=await db.collection('assignments').limit(300).get()}if(assignSnap)assignSnap.forEach(d=>{const x=d.data();assigns.push({id:d.id,...x})});
